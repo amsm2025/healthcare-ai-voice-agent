@@ -1,21 +1,22 @@
 # Healthcare AI Voice Agent
+
 ![Healthcare AI Voice Agent](docs/assets/healthcare-ai-voice-agent.png)
 
-A portfolio-ready full-stack AI healthcare appointment assistant built with **FastAPI, React, TypeScript, OpenAI-compatible LLM APIs, and Cal.com integration**.
+A full-stack AI-assisted healthcare appointment scheduling application demonstrating **FastAPI, React, TypeScript, service-oriented AI integration, automated testing, containerized development, and an AWS ECS/Fargate-ready deployment design**.
 
-> **Portfolio / demonstration project only.** This repository is not a medical device and must not be used for diagnosis, treatment, emergency triage, or storage of real protected health information (PHI) without an appropriate security, privacy, legal, and compliance review.
+> **Portfolio / demonstration project only.** This repository is not a medical device and must not be used for diagnosis, treatment, emergency triage, or storage of real protected health information (PHI) without appropriate security, privacy, legal, and compliance review.
 
-## What this project demonstrates
+## Engineering objectives
 
-- Full-stack system design
-- AI-assisted conversational workflows
-- FastAPI REST APIs
-- React + TypeScript frontend
-- Appointment scheduling integration
-- Clean service boundaries and configuration
-- Dockerized local development
-- Automated tests and GitHub Actions
-- AWS ECS/Fargate-ready deployment structure
+This project demonstrates the design of an AI-enabled application across frontend, backend, integration, testing, and infrastructure boundaries.
+
+- Clear separation between UI, API, AI, safety, and scheduling concerns
+- Provider-independent service boundaries for LLM and scheduling integrations
+- Typed frontend development with React and TypeScript
+- Validated REST APIs with FastAPI and Pydantic
+- Containerized, repeatable local development
+- Automated backend testing and CI
+- Cloud-ready architecture designed for stateless deployment and horizontal scaling
 
 ## Architecture
 
@@ -23,92 +24,99 @@ A portfolio-ready full-stack AI healthcare appointment assistant built with **Fa
 Patient / User
       |
       v
-React + TypeScript Web App
+React + TypeScript SPA
       |
       v
-FastAPI Backend
-  |        |          |
-  |        |          +--> Cal.com Scheduling API
-  |        |
-  |        +--> LLM Provider
-  |
-  +--> In-memory / pluggable application services
+FastAPI Application
+      |
+      +-------------------+
+      |                   |
+      v                   v
+Safety / AI Layer     Scheduling Service
+      |                   |
+      v                   v
+ LLM Provider           Cal.com
+
+Production direction:
+
+CloudFront / CDN
+      |
+      v
+React SPA
+      |
+      v
+Application Load Balancer
+      |
+      v
+AWS ECS / Fargate
+      |
+      +--> LLM Provider
+      +--> Scheduling Provider
+      +--> PostgreSQL / RDS
+      +--> Redis / ElastiCache
 ```
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the detailed design.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the detailed design and [`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md) for the deployment design.
 
-## Core features
+## Core capabilities
 
-1. Conversational appointment-intake endpoint
-2. Safe, non-diagnostic assistant behavior
-3. Appointment availability abstraction
-4. Booking abstraction for Cal.com
-5. Health/status endpoint
-6. React scheduling UI
-7. Docker Compose development environment
-8. Backend tests
-9. CI workflow
+- Conversational appointment-intake API
+- Safe, non-diagnostic assistant behavior
+- Emergency-language guardrail boundary
+- Appointment availability service abstraction
+- Booking abstraction for Cal.com
+- Health/status endpoint
+- React scheduling interface
+- Docker Compose development environment
+- Automated backend tests
+- GitHub Actions CI workflow
+- AWS ECS/Fargate-ready container architecture
 
 ## Technology stack
 
-### Backend
-- Python 3.12
-- FastAPI
-- Pydantic
-- HTTPX
-- Pytest
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React, TypeScript, Vite |
+| Backend | Python 3.12, FastAPI, Pydantic, HTTPX |
+| AI | Provider-isolated LLM service boundary |
+| Scheduling | Cal.com service abstraction |
+| Testing | Pytest |
+| Containers | Docker, Docker Compose |
+| CI/CD | GitHub Actions |
+| Cloud architecture | AWS ECS / Fargate |
 
-### Frontend
-- React
-- TypeScript
-- Vite
+## Design decisions
 
-### Infrastructure
-- Docker
-- Docker Compose
-- AWS ECS / Fargate-ready container design
-- GitHub Actions
+### Isolated AI integration
+
+AI interaction is kept behind a service boundary so providers, models, prompting strategies, and safety controls can evolve without tightly coupling them to API routes or scheduling logic.
+
+### Scheduling abstraction
+
+Scheduling is separated from conversation logic. This makes the booking provider replaceable, allows integrations to be mocked during testing, and isolates external API failures from the rest of the application.
+
+### Safety-conscious boundaries
+
+The current implementation is intentionally non-diagnostic. A production healthcare implementation would require clinically reviewed safety controls, formal privacy/compliance review, access control, audit logging, encryption, retention policies, and approved data-processing agreements.
+
+### Cloud-ready deployment
+
+The backend is structured for stateless container deployment. A production evolution can place containers behind an Application Load Balancer on ECS/Fargate and introduce managed persistence, caching, secrets management, centralized logging, monitoring, and infrastructure as code.
 
 ## Quick start
-
-### 1. Clone
 
 ```bash
 git clone https://github.com/amsm2025/healthcare-ai-voice-agent.git
 cd healthcare-ai-voice-agent
-```
-
-### 2. Configure environment
-
-```bash
 cp .env.example .env
-```
-
-Update the values in `.env`.
-
-### 3. Start with Docker
-
-```bash
 docker compose up --build
 ```
 
-Backend:
-
-```text
-http://localhost:8000
-```
-
-API docs:
-
-```text
-http://localhost:8000/docs
-```
-
-Frontend:
-
-```text
-http://localhost:5173
-```
+| Service | Local address |
+| --- | --- |
+| Backend API | `http://localhost:8000` |
+| OpenAPI / Swagger | `http://localhost:8000/docs` |
+| Frontend | `http://localhost:5173` |
 
 ## Run backend without Docker
 
@@ -133,49 +141,46 @@ npm install
 npm run dev
 ```
 
-## Example API request
+## Testing
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
-  -d "{\"message\":\"I would like to schedule a general consultation next week.\"}"
+cd backend
+pytest
 ```
 
-## Safety principles
+The repository also includes a GitHub Actions workflow for automated validation in CI.
 
-The assistant is deliberately designed to:
+## Security and healthcare considerations
 
-- avoid diagnosis;
-- avoid prescribing medication;
-- direct emergencies to local emergency services;
-- collect only the minimum information needed for scheduling;
-- avoid storing sensitive data by default.
+Before this architecture handles real healthcare data, a production implementation should include authentication and authorization, least-privilege access, encryption, managed secrets, audit logging, minimum-necessary data collection, retention policies, approved providers, applicable privacy/compliance review, appropriate BAAs/DPAs, threat modeling, and security testing.
 
-## Suggested portfolio talking points
+No real PHI is required for this portfolio demonstration.
 
-When presenting this project in an interview, explain:
+## Project status
 
-- why the LLM is isolated behind a service interface;
-- why scheduling is isolated from conversation logic;
-- how you would add authentication, audit logs, encryption, and PHI controls;
-- how ECS/Fargate provides stateless horizontal scaling;
-- how you would move from a web chat demo to a voice channel using Twilio or a similar provider.
+This repository represents a working engineering demonstration and extensible architecture rather than a production clinical system.
 
-## Roadmap
+### Roadmap
 
-- [ ] Real Cal.com API integration
-- [ ] Voice provider integration
-- [ ] PostgreSQL persistence
-- [ ] Redis session cache
-- [ ] OAuth / SSO
-- [ ] RAG knowledge base for approved clinic FAQs
-- [ ] Structured observability
-- [ ] Terraform infrastructure
-- [ ] Production-grade secrets management
+- [ ] Complete real Cal.com API wiring
+- [ ] Add voice-provider integration
+- [ ] Add PostgreSQL persistence
+- [ ] Add Redis-backed session state
+- [ ] Add OAuth / OIDC authentication
+- [ ] Add RAG for approved clinic FAQs
+- [ ] Add structured observability and tracing
+- [ ] Add Terraform infrastructure
+- [ ] Add production-grade secrets management
+- [ ] Add production PHI controls following formal compliance review
+
+## Documentation
+
+- [`Architecture`](docs/ARCHITECTURE.md)
+- [`AWS deployment`](docs/AWS_DEPLOYMENT.md)
 
 ## Author
 
 **Angel Martin Manalansan**  
-GitHub: [amsm2025](https://github.com/amsm2025)
+Senior Full Stack Engineer | AI-enabled Applications | Enterprise Systems
 
-Add your LinkedIn and portfolio URL here before publishing.
+GitHub: [amsm2025](https://github.com/amsm2025)
