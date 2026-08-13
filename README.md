@@ -1,4 +1,5 @@
 # Healthcare AI Voice Agent
+![Healthcare AI Voice Agent](docs/assets/healthcare-ai-voice-agent.png)
 
 A portfolio-ready full-stack AI healthcare appointment assistant built with **FastAPI, React, TypeScript, OpenAI-compatible LLM APIs, and Cal.com integration**.
 
