@@ -16,9 +16,13 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     openai_timeout_seconds: float = 20.0
 
+    # Cal.com follows the same explicit demo/live pattern.
+    calcom_mode: str = "demo"
     calcom_api_key: str = ""
     calcom_event_type_id: str = ""
     calcom_base_url: str = "https://api.cal.com"
+    calcom_api_version: str = "2026-02-25"
+    calcom_timeout_seconds: float = 20.0
 
     cors_origins: str = "http://localhost:5173"
 
