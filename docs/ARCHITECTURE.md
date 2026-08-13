@@ -51,7 +51,7 @@ Patient / User
 +---------+---------+              +-----------+-----------+
           |                                    |
           v                                    v
-    LLM Provider                            Cal.com
+ OpenAI Responses API                    Cal.com API
 ```
 
 ## Component responsibilities
@@ -99,13 +99,13 @@ Responsible for:
 - high-level safety-aware behavior;
 - future retrieval-augmented FAQ responses.
 
-The LLM service must not receive infrastructure secrets, direct database credentials, or unrestricted scheduling credentials.
+The current implementation supports a deterministic demo mode and an optional live OpenAI Responses API path when configured with credentials. The LLM service must not receive infrastructure secrets, direct database credentials, or unrestricted scheduling credentials.
 
 ### Scheduling service
 
 Cal.com is isolated behind a scheduling service abstraction.
 
-This boundary enables:
+The current implementation supports both deterministic demo bookings and an optional live Cal.com booking path. This boundary enables:
 
 - provider replacement without changing API routes;
 - local mocks and deterministic automated tests;
@@ -123,7 +123,7 @@ A typical scheduling interaction follows this sequence:
 3. FastAPI validates the request contract
 4. Safety checks run before general AI behavior
 5. AI service interprets the request / prepares an approved response
-6. Scheduling service queries availability when required
+6. Scheduling service creates or coordinates a booking when required
 7. Provider response is normalized into an internal application model
 8. FastAPI returns a stable response contract to the frontend
 9. Frontend renders the result to the user
@@ -302,11 +302,17 @@ See [`AWS_DEPLOYMENT.md`](AWS_DEPLOYMENT.md) for deployment-specific guidance.
 
 ## Current boundaries and roadmap
 
-The current project demonstrates the application architecture while deliberately identifying production gaps rather than presenting them as complete.
+The current project demonstrates working provider integration paths while deliberately identifying the remaining production gaps rather than presenting them as complete.
+
+Implemented in the current repository:
+
+- deterministic demo and live OpenAI Responses API paths;
+- deterministic demo and live Cal.com booking paths;
+- mocked provider integration tests for external HTTP behavior;
+- automated backend tests and frontend production-build validation in CI.
 
 Planned production-oriented capabilities include:
 
-- complete Cal.com API wiring;
 - voice-provider integration;
 - PostgreSQL persistence;
 - Redis-backed session state;
