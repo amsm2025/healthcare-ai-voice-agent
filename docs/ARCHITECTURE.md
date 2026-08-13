@@ -42,6 +42,14 @@ This allows:
 - mock booking creation;
 - external API failures to be handled independently.
 
+## Design principles
+
+- keep conversation, safety, and scheduling concerns separated;
+- isolate external providers behind service boundaries;
+- keep secrets and provider credentials out of the frontend and LLM layer;
+- favor testable interfaces so AI and scheduling dependencies can be mocked;
+- design cloud deployment so application services can scale independently when required.
+
 ## Production expansion
 
 ```text
