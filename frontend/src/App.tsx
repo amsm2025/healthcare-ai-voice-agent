@@ -1,82 +1,125 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const WELCOME = "Hello. I can help you schedule a clinic appointment. Please avoid entering detailed medical information.";
 
-type ChatResponse = {
-  reply: string;
-  intent: string;
-  safe_to_continue: boolean;
+type ChatResponse = { reply: string; intent: string; safe_to_continue: boolean };
+type Message = { role: "assistant" | "user"; text: string };
+type SpeechEvent = { results: ArrayLike<{ 0: { transcript: string } }> };
+type Recognition = {
+  continuous: boolean; interimResults: boolean; lang: string;
+  start: () => void; stop: () => void;
+  onstart: (() => void) | null; onend: (() => void) | null;
+  onerror: (() => void) | null; onresult: ((event: SpeechEvent) => void) | null;
 };
+type RecognitionConstructor = new () => Recognition;
 
 export default function App() {
   const [message, setMessage] = useState("");
-  const [reply, setReply] = useState(
-    "Hello. I can help you schedule a clinic appointment. Please avoid entering detailed medical information."
-  );
+  const [messages, setMessages] = useState<Message[]>([{ role: "assistant", text: WELCOME }]);
   const [loading, setLoading] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const recognition = useRef<Recognition | null>(null);
+  const chatEnd = useRef<HTMLDivElement | null>(null);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!message.trim()) return;
+  const speechWindow = window as typeof window & {
+    SpeechRecognition?: RecognitionConstructor;
+    webkitSpeechRecognition?: RecognitionConstructor;
+  };
+  const speechSupported = Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition);
 
+  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+  useEffect(() => () => { recognition.current?.stop(); window.speechSynthesis?.cancel(); }, []);
+
+  function speak(text: string) {
+    if (!voiceEnabled || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.96;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  async function sendMessage(text: string) {
+    const clean = text.trim();
+    if (!clean || loading) return;
+    setMessages((current) => [...current, { role: "user", text: clean }]);
+    setMessage("");
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/api/v1/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message: clean }),
       });
-
+      if (!response.ok) throw new Error("Request failed");
       const data: ChatResponse = await response.json();
-      setReply(data.reply);
-      setMessage("");
+      setMessages((current) => [...current, { role: "assistant", text: data.reply }]);
+      speak(data.reply);
     } catch {
-      setReply("The service is temporarily unavailable. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+      const fallback = "The service is temporarily unavailable. Please try again.";
+      setMessages((current) => [...current, { role: "assistant", text: fallback }]);
+    } finally { setLoading(false); }
+  }
+
+  function submit(event: FormEvent) { event.preventDefault(); void sendMessage(message); }
+
+  function toggleListening() {
+    if (!speechSupported) return;
+    if (listening) { recognition.current?.stop(); return; }
+    // Prevent the assistant's own TTS audio from being captured as user input.
+    window.speechSynthesis?.cancel();
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const next = new SpeechRecognition();
+    next.continuous = false;
+    next.interimResults = false;
+    next.lang = "en-US";
+    next.onstart = () => setListening(true);
+    next.onend = () => setListening(false);
+    next.onerror = () => setListening(false);
+    next.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript || "";
+      setMessage(transcript);
+      if (transcript) void sendMessage(transcript);
+    };
+    recognition.current = next;
+    // Give the browser audio output a moment to stop before opening the mic.
+    window.setTimeout(() => next.start(), 250);
   }
 
   return (
     <main className="shell">
       <section className="hero">
-        <div>
-          <span className="badge">PORTFOLIO PROJECT</span>
-          <h1>Healthcare AI<br />Voice Agent</h1>
-          <p>
-            A safe-by-design appointment assistant demonstrating full-stack
-            engineering, AI orchestration and scheduling integration.
-          </p>
-        </div>
-        <div className="statusCard">
-          <strong>System</strong>
-          <span>FastAPI • React • AI • Cal.com</span>
-          <div className="online"><i /> Demo ready</div>
-        </div>
+        <div><span className="badge">PORTFOLIO PROJECT</span><h1>Healthcare AI<br />Voice Agent</h1><p>A safe-by-design voice assistant demonstrating full-stack engineering, AI orchestration and appointment scheduling.</p></div>
+        <div className="statusCard"><strong>System</strong><span>FastAPI • React • Voice • AI</span><div className="online"><i /> Live demo ready</div></div>
       </section>
 
       <section className="chatCard">
-        <div className="chatHeader">
-          <div>
-            <strong>Appointment Assistant</strong>
-            <span>Non-diagnostic scheduling demo</span>
-          </div>
+        <header className="chatHeader">
+          <div><strong>Appointment Assistant</strong><span>{listening ? "Listening… speak now" : loading ? "Thinking…" : "Ready to help"}</span></div>
+          <button className="soundButton" type="button" onClick={() => { window.speechSynthesis?.cancel(); setVoiceEnabled((value) => !value); }} aria-label="Toggle spoken responses">{voiceEnabled ? "🔊 Voice on" : "🔇 Voice off"}</button>
+        </header>
+
+        <div className="conversation" aria-live="polite">
+          {messages.map((item, index) => <div className={`message ${item.role}`} key={`${item.role}-${index}`}><span>{item.role === "assistant" ? "CareVoice AI" : "You"}</span><p>{item.text}</p></div>)}
+          {loading && <div className="message assistant"><span>CareVoice AI</span><p className="typing">•••</p></div>}
+          <div ref={chatEnd} />
         </div>
 
-        <div className="response">{reply}</div>
+        <div className="suggestions">
+          <button type="button" onClick={() => void sendMessage("I would like to schedule an appointment next week.")}>Schedule appointment</button>
+          <button type="button" onClick={() => void sendMessage("What can you help me with?")}>What can you do?</button>
+        </div>
 
         <form onSubmit={submit}>
-          <input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Example: I'd like to schedule an appointment next week"
-          />
-          <button disabled={loading}>{loading ? "Sending..." : "Send"}</button>
+          <button className={`micButton ${listening ? "listening" : ""}`} type="button" onClick={toggleListening} disabled={!speechSupported || loading} title={speechSupported ? "Speak to the assistant" : "Speech recognition is unavailable in this browser"}>{listening ? "■" : "🎙"}<span>{listening ? "Stop" : "Talk"}</span></button>
+          <input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Type a message or press Talk…" aria-label="Message" />
+          <button className="sendButton" disabled={loading || !message.trim()}>{loading ? "Sending…" : "Send"}</button>
         </form>
-
-        <small>
-          This demo does not provide medical advice. For emergencies, contact local emergency services.
-        </small>
+        {!speechSupported && <div className="browserNote">Voice input is unavailable in this browser. Use the latest Chrome or Edge.</div>}
+        <small>This demonstration does not provide medical advice. For emergencies, contact local emergency services.</small>
       </section>
     </main>
   );
